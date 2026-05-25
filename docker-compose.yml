@@ -39,7 +39,7 @@ services:
       JWT_SECRET: change_me_to_a_random_secret
       PYTHONPATH: /app
     command: >
-      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+      sh -c "alembic upgrade head && python seed_admin.py && uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
   frontend:
     build:
