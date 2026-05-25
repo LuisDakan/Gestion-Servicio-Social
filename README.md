@@ -50,11 +50,12 @@ La gestión de servicio social requiere seguimiento constante de vacantes, postu
 ---
 
 ## Tecnologías
-- **Frontend:** Vue
-- **Backend:** Python
-- **Base de datos:** PostgreSQL
-- **Infraestructura:** Docker y Docker Compose
-- **Otros componentes del repositorio:** JavaScript, HTML y Mako
+- **Frontend:** Vue 3, Vue Router, Pinia, Axios, Tailwind CSS, Vite.
+- **Backend:** Python, FastAPI, Uvicorn, CORSMiddleware, Alembic.
+- **Base de datos:** PostgreSQL.
+- **Infraestructura:** Docker y Docker Compose.
+- **Monitoreo / observabilidad:** Prometheus.
+- **Otros componentes del repositorio:** HTML, JavaScript, Mako, Dockerfile, Nginx. :contentReference[oaicite:1]{index=1}
 
 ---
 
@@ -67,12 +68,12 @@ La gestión de servicio social requiere seguimiento constante de vacantes, postu
 
 **Diseño en el código actual:**
 - El repositorio está organizado en módulos separados: `frontend`, `backend`, `database` y `observability`.
-- El despliegue usa `docker-compose.yml` para levantar:
-  - una base de datos PostgreSQL con volumen persistente,
-  - un backend Python expuesto en el puerto `8000`,
-  - y un frontend expuesto en `3001`.
+- El despliegue usa `docker-compose.yml` para levantar una base de datos PostgreSQL con volumen persistente, un backend Python expuesto en el puerto `8000` y un frontend expuesto en `3001`.
 - El backend ejecuta migraciones con Alembic antes de iniciar el servidor.
-- El repositorio incluye un plan de pruebas manual que cubre login, paneles, CRUDs, vacantes, postulaciones y casos de control de acceso por rol.
+- El backend está estructurado con carpetas como `models`, `routers`, `schemas`, `services`, además de `config.py`, `database.py`, `main.py` y `middleware.py`.
+- El frontend usa Vite como herramienta de desarrollo y construcción, junto con Vue, Vue Router, Pinia y Axios.
+- El repositorio incluye un archivo de observabilidad con `prometheus.yaml`.
+- El proyecto también incluye un plan de pruebas manual que cubre login, paneles, CRUDs, vacantes, postulaciones y casos de control de acceso por rol. :contentReference[oaicite:2]{index=2}
 
 ---
 
