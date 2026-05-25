@@ -1,5 +1,32 @@
-FROM prom/prom/prometheus
+FROM alpine:3.19
 
-WORKDIR /etc/prometheus
+RUN apk add --no-cache python3 py3-pip supervisor curl
 
-RUN []
+ARG PROMETHEUS_VERSION=2.53.0
+RUN curl -sL https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/prometheus-${PROMETHEUS_VERSION}.linux-amd64.tar.gz \
+    | tar xz -C /tmp && \
+    mv /tmp/prometheus-${PROMETHEUS_VERSION}.linux-amd64/prometheus /usr/local/bin/ && \
+    mv /tmp/prometheus-${PROMETHEUS_VERSION}.linux-amd64/promtool /usr/local/bin/ && \
+    rm -rf /tmp/prometheus-*
+
+ARG ALERTMANAGER_VERSION=0.27.0
+RUN curl -sL https://github.com/prometheus/alertmanager/releases/download/v${ALERTMANAGER_VERSION}/alertmanager-${ALERTMANAGER_VERSION}.linux-amd64.tar.gz \
+    | tar xz -C /tmp && \
+    mv /tmp/alertmanager-${ALERTMANAGER_VERSION}.linux-amd64/alertmanager /usr/local/bin/ && \
+    mv /tmp/alertmanager-${ALERTMANAGER_VERSION}.linux-amd64/amtool /usr/local/bin/ && \
+    rm -rf /tmp/alertmanager-*
+
+COPY requirements.txt /tmp/
+RUN pip3 install --no-cache-dir --break-system-packages -r /tmp/requirements.txt
+
+RUN mkdir -p /etc/prometheus /etc/alertmanager /app
+
+COPY prometheus.yml /etc/prometheus/prometheus.yml
+COPY alerts.yml /etc/prometheus/alerts.yml
+COPY alertmanager.yml /etc/alertmanager/alertmanager.yml
+COPY bot.py /app/bot.py
+COPY supervisord.conf /etc/supervisord.conf
+
+EXPOSE 9090 9093 5000
+
+CMD ["supervisord", "-c", "/etc/supervisord.conf"]
