@@ -1,6 +1,6 @@
 <h1 align="center">
   <img src="https://github.com/user-attachments/assets/3abebde3-8ee0-40d0-ae38-82c52246b528" width="60" height="60" />
-  Project: Página para la gestión de servicio social
+  Proyecto: Página para la gestión de servicio social
   <img src="https://github.com/user-attachments/assets/fe29e172-7262-4289-820a-1c08eecaa61b" width="60" height="60" />
 </h1>
 
@@ -8,39 +8,39 @@ Repositorio correspondiente al proyecto **Página para la gestión de servicio s
 
 ---
 
-## Team Information
-| Full name | Student ID |
+## Información del equipo
+| Nombre completo | Matrícula |
 |---|---:|
 | Acosta Porcayo Alan Omar | 320206102 |
 | Araiza Valdés Diego Antonio | 423032833 |
 | Salazar Islas Luis Daniel | 320335163 |
 | Tapia García Andrés | 320252367 |
-| Velasquez Caudillo Osbaldo | 320341320 |
+| Velasquez Caudillo Osbaldo | 320341704 |
 
-| Field | Detail |
+| Campo | Detalle |
 |---|---|
-| Course | Sistemas distribuidos |
-| Project | Página para la gestión de servicio social |
-| Semester | 2026 - 2 |
+| Materia | Sistemas distribuidos |
+| Proyecto | Página para la gestión de servicio social |
+| Semestre | 2026 - 2 |
 
 ---
 
-## Introduction
+## Introducción
 Este proyecto consiste en una plataforma web para centralizar la administración del servicio social. La aplicación contempla distintos perfiles de usuario y separa las funciones de cada uno: administración de carreras, alumnos y empresas; consulta de vacantes por parte del alumno; y publicación y seguimiento de vacantes por parte de la empresa.
 
 ---
 
-## Problem Formulation
+## Planteamiento del problema
 El objetivo del sistema es digitalizar el proceso de gestión de servicio social para reducir el manejo manual de registros, facilitar el control de vacantes y postulaciones, y ofrecer un acceso diferenciado según el tipo de usuario.
 
 ---
 
-## Motivation
+## Motivación
 La gestión de servicio social requiere seguimiento constante de vacantes, postulaciones, documentos y estados de aceptación. Una plataforma web permite concentrar esa información en un solo lugar, mejorar el control administrativo y dar a cada usuario una vista acorde a su función.
 
 ---
 
-## Objectives
+## Objetivos
 - Centralizar la administración de carreras, alumnos y empresas.
 - Permitir a los alumnos consultar vacantes y enviar postulaciones con archivo PDF.
 - Permitir a las empresas crear vacantes y administrar postulantes.
@@ -49,7 +49,7 @@ La gestión de servicio social requiere seguimiento constante de vacantes, postu
 
 ---
 
-## Technologies
+## Tecnologías
 - **Frontend:** Vue
 - **Backend:** Python
 - **Base de datos:** PostgreSQL
@@ -58,27 +58,27 @@ La gestión de servicio social requiere seguimiento constante de vacantes, postu
 
 ---
 
-## Theoretical Framework & Design used
+## Marco teórico y diseño utilizado
 - **Gestión de servicio social:** sistema orientado a organizar vacantes, postulaciones, estados y asignaciones.
 - **Control por roles:** el sistema separa el comportamiento de administrador, alumno y empresa.
 - **CRUD:** el repositorio documenta creación, edición y eliminación de carreras, alumnos, empresas y vacantes.
 - **Flujo de postulación:** el alumno consulta vacantes, entra al detalle y envía su postulación con PDF.
 - **Asignación y seguimiento:** el sistema maneja estados como pendiente, aceptada y rechazada, además de un código de confirmación para postulaciones aceptadas.
 
-**Design in the current code:**
+**Diseño en el código actual:**
 - El repositorio está organizado en módulos separados: `frontend`, `backend`, `database` y `observability`.
 - El despliegue usa `docker-compose.yml` para levantar:
   - una base de datos PostgreSQL con volumen persistente,
   - un backend Python expuesto en el puerto `8000`,
   - y un frontend expuesto en `3001`.
 - El backend ejecuta migraciones con Alembic antes de iniciar el servidor.
-- El repositorio incluye un plan de pruebas manual que cubre login, dashboards, CRUDs, vacantes, postulaciones y casos de control de acceso por rol.
+- El repositorio incluye un plan de pruebas manual que cubre login, paneles, CRUDs, vacantes, postulaciones y casos de control de acceso por rol.
 
 ---
 
-## Development
+## Desarrollo
 
-### Design Considerations
+### Consideraciones de diseño
 - **Autenticación y roles:** el acceso se valida por usuario y redirige al panel correspondiente.
 - **Panel administrativo:** muestra métricas y acceso directo a gestión de carreras, alumnos y empresas.
 - **Panel del alumno:** muestra vacantes abiertas, postulaciones pendientes, aceptadas y rechazadas.
@@ -87,16 +87,16 @@ La gestión de servicio social requiere seguimiento constante de vacantes, postu
 - **Seguimiento de estados:** los postulantes pueden pasar por estados pendiente, aceptado o rechazado.
 - **Código de confirmación:** al aceptar una postulación, el sistema asigna un código de confirmación de forma automática.
 
-### Implementation
+### Implementación
 - **Backend:** contiene la lógica principal del sistema, junto con la configuración de migraciones y reinicio de base de datos.
 - **Frontend:** concentra la interfaz de usuario y la capa visual de la plataforma.
-- **Database:** contiene la definición y estructura de la base de datos.
-- **Observability:** incluye configuración para monitoreo con `prometheus.yaml`.
+- **Base de datos:** contiene la definición y estructura de la base de datos.
+- **Observabilidad:** incluye configuración para monitoreo con `prometheus.yaml`.
 - **Contenedorización:** el proyecto está preparado para ejecutarse con Docker Compose.
 
-### Main Functionalities
+### Funcionalidades principales
 - Inicio de sesión con rutas por rol.
-- Dashboard de administrador con métricas.
+- Panel de administración con métricas.
 - CRUD de carreras.
 - CRUD de alumnos.
 - CRUD de empresas.
@@ -109,19 +109,19 @@ La gestión de servicio social requiere seguimiento constante de vacantes, postu
 
 ---
 
-## Results
+## Resultados
 El repositorio documenta una implementación funcional que contempla autenticación, paneles por rol, CRUDs y un flujo completo de vacantes y postulaciones. El plan de pruebas incluye escenarios de éxito y casos borde, como acceso a rutas con rol incorrecto, ausencia de PDF en la postulación y redirección automática al login cuando el usuario no tiene permisos.
 
 ---
 
-## How to run
+## Cómo ejecutar
 
-### Requirements
+### Requisitos
 - Docker y Docker Compose instalados.
 - Puerto `3001` disponible para el frontend.
 - Puerto `8000` disponible para el backend.
 - Un entorno compatible con la ejecución de contenedores.
 
-### Run with Docker Compose
+### Ejecutar con Docker Compose
 ```bash
 docker compose up --build
