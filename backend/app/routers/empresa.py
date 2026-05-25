@@ -11,6 +11,7 @@ from app.models.vacante import Vacante
 from app.models.solicitud import Solicitud, EstatusEnum
 from app.schemas.vacante import VacanteCreate, VacanteUpdate
 from app.middleware import require_role
+from app.metrics import vacantes_llenas_total
 from app.services.solicitud_service import (
     expirar_aceptaciones_vencidas,
     fecha_limite_nueva,
@@ -351,6 +352,9 @@ def aceptar_solicitud(
     solicitud.fecha_limite_respuesta = fecha_limite_nueva()
     solicitud.respondido_en = None
     db.commit()
+
+    if aceptadas + 1 >= vacante.cupo_maximo:
+        vacantes_llenas_total.inc()
 
     return {"mensaje": "Alumno aceptado. Tiene 48h para confirmar."}
 

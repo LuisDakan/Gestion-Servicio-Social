@@ -51,6 +51,25 @@ services:
     ports:
       - "3001:80"
 
+  monitoring:
+    build:
+      context: ./observability
+    container_name: ss_monitoring
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "9091:9090"
+      - "9094:9093"
+    environment:
+      TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN}"
+      TELEGRAM_CHAT_ID: "${TELEGRAM_CHAT_ID}"
+    volumes:
+      - prometheus_data:/data/prometheus
+      - alertmanager_data:/data/alertmanager
+
 volumes:
   pgdata:
   uploads:
+  prometheus_data:
+  alertmanager_data:

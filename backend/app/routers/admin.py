@@ -14,6 +14,7 @@ from app.schemas.empresa import EmpresaCreate, EmpresaUpdate, EmpresaOut
 from app.services.auth_service import hash_password
 from app.services.solicitud_service import expirar_aceptaciones_vencidas
 from app.middleware import require_role
+from app.metrics import users_registered_total
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 admin_only = Depends(require_role("admin"))
@@ -138,6 +139,7 @@ def create_alumno(data: AlumnoCreate, db: Session = Depends(get_db), _=admin_onl
     db.add(alumno)
     db.commit()
     db.refresh(alumno)
+    users_registered_total.labels(role='alumno').inc()
     return AlumnoOut(
         id=alumno.id,
         user_id=alumno.user_id,
@@ -236,6 +238,7 @@ def create_empresa(data: EmpresaCreate, db: Session = Depends(get_db), _=admin_o
     db.add(emp)
     db.commit()
     db.refresh(emp)
+    users_registered_total.labels(role='empresa').inc()
     return emp
 
 
