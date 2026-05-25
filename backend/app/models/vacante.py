@@ -21,6 +21,7 @@ class Vacante(Base):
     limite_registros: Mapped[int] = mapped_column(Integer, nullable=False)
     activa: Mapped[bool] = mapped_column(Boolean, default=True)
     cerrada_manualmente: Mapped[bool] = mapped_column(Boolean, default=False)
+    finalizada: Mapped[bool] = mapped_column(Boolean, default=False)
 
     empresa = relationship("Empresa", back_populates="vacantes")
     solicitudes = relationship("Solicitud", back_populates="vacante")

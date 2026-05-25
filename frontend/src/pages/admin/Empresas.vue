@@ -8,13 +8,20 @@
       </button>
     </div>
 
+    <div v-if="errors.length" class="mb-4 p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
+      <div class="font-medium mb-1">Se encontraron los siguientes errores:</div>
+      <ul class="list-disc list-inside space-y-0.5">
+        <li v-for="(err, i) in errors" :key="i">{{ err }}</li>
+      </ul>
+    </div>
+
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
       <table class="w-full">
         <thead>
           <tr class="bg-gray-50 border-b border-gray-200">
             <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">RFC</th>
             <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Nombre</th>
-            <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Dirección</th>
+            <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Sector</th>
             <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Contacto</th>
             <th class="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Acciones</th>
           </tr>
@@ -23,7 +30,7 @@
           <tr v-for="item in items" :key="item.id" class="hover:bg-gray-50 transition-colors">
             <td class="px-5 py-3.5 text-sm font-mono text-gray-800">{{ item.rfc }}</td>
             <td class="px-5 py-3.5 text-sm text-gray-800">{{ item.nombre }}</td>
-            <td class="px-5 py-3.5 text-sm text-gray-500 max-w-xs truncate">{{ item.direccion || '-' }}</td>
+            <td class="px-5 py-3.5 text-sm text-gray-500">{{ item.sector || '-' }}</td>
             <td class="px-5 py-3.5 text-sm text-gray-500">{{ item.contacto_nombre || '-' }}</td>
             <td class="px-5 py-3.5 text-right">
               <button @click="openEdit(item)" class="text-gray-400 hover:text-blue-600 mr-3 transition-colors" title="Editar">
@@ -51,26 +58,38 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
               <input v-model="form.nombre" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" required />
             </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Sector</label>
+              <input v-model="form.sector" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" required />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+              <input v-model="form.telefono" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" required />
+            </div>
             <div class="col-span-2">
               <label class="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
-              <input v-model="form.direccion" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" />
+              <input v-model="form.direccion" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" required />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Contacto nombre</label>
-              <input v-model="form.contacto_nombre" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" />
+              <input v-model="form.contacto_nombre" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" required />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Contacto teléfono</label>
-              <input v-model="form.contacto_telefono" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" />
-            </div>
-            <div class="col-span-2">
               <label class="block text-sm font-medium text-gray-700 mb-1">Contacto email</label>
-              <input v-model="form.contacto_email" type="email" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" />
+              <input v-model="form.contacto_email" type="email" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" required />
             </div>
-            <div v-if="!editing" class="col-span-2">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-              <input v-model="form.password" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" :required="!editing" />
-            </div>
+            <template v-if="!editing">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+                <input v-model="form.password" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" required />
+                <p v-if="fieldErrors.password" class="text-xs text-red-600 mt-1">{{ fieldErrors.password }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Confirmar contraseña</label>
+                <input v-model="form.confirm_password" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" required />
+                <p v-if="fieldErrors.confirm_password" class="text-xs text-red-600 mt-1">{{ fieldErrors.confirm_password }}</p>
+              </div>
+            </template>
           </div>
           <div class="flex justify-end gap-3 mt-6">
             <button type="button" @click="showModal = false" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors">Cancelar</button>
@@ -99,7 +118,7 @@
 </template>
 
 <script setup>
-import { ref, inject, onMounted } from 'vue'
+import { ref, reactive, inject, onMounted } from 'vue'
 import client from '../../api/client'
 
 const flash = inject('flash')
@@ -107,42 +126,105 @@ const error = inject('error')
 const items = ref([])
 const showModal = ref(false)
 const editing = ref(false)
+const editingId = ref(null)
 const deleteTarget = ref(null)
-const form = ref({ rfc: '', nombre: '', direccion: '', contacto_nombre: '', contacto_telefono: '', contacto_email: '', password: '' })
+const errors = ref([])
+const fieldErrors = reactive({ password: '', confirm_password: '' })
+const form = ref({ rfc: '', nombre: '', sector: '', telefono: '', direccion: '', contacto_nombre: '', contacto_email: '', password: '', confirm_password: '' })
 
 onMounted(async () => {
-  const { data } = await client.get('/admin/empresas')
-  items.value = data
+  try {
+    const { data } = await client.get('/admin/empresas')
+    items.value = data
+  } catch (e) {
+    errors.value = [e.response?.data?.detail || 'Error al cargar empresas']
+  }
 })
 
 function openCreate() {
   editing.value = false
-  form.value = { rfc: '', nombre: '', direccion: '', contacto_nombre: '', contacto_telefono: '', contacto_email: '', password: '' }
+  editingId.value = null
+  errors.value = []
+  fieldErrors.password = ''
+  fieldErrors.confirm_password = ''
+  form.value = { rfc: '', nombre: '', sector: '', telefono: '', direccion: '', contacto_nombre: '', contacto_email: '', password: '', confirm_password: '' }
   showModal.value = true
 }
 
 function openEdit(item) {
   editing.value = true
-  form.value = { ...item }
+  editingId.value = item.id
+  errors.value = []
+  form.value = {
+    rfc: item.rfc,
+    nombre: item.nombre,
+    sector: item.sector,
+    telefono: item.telefono,
+    direccion: item.direccion,
+    contacto_nombre: item.contacto_nombre,
+    contacto_email: item.contacto_email,
+    password: '',
+    confirm_password: '',
+  }
   showModal.value = true
 }
 
+function validate() {
+  fieldErrors.password = ''
+  fieldErrors.confirm_password = ''
+  errors.value = []
+  let valid = true
+  if (!editing.value) {
+    if (!form.value.password || form.value.password.length < 8) {
+      fieldErrors.password = 'La contraseña debe tener al menos 8 caracteres'
+      valid = false
+    }
+    if (form.value.password !== form.value.confirm_password) {
+      fieldErrors.confirm_password = 'Las contraseñas no coinciden'
+      valid = false
+    }
+  }
+  if (!form.value.nombre) { errors.value.push('El nombre es obligatorio'); valid = false }
+  if (!form.value.rfc) { errors.value.push('El RFC es obligatorio'); valid = false }
+  if (!form.value.contacto_email) { errors.value.push('El correo de contacto es obligatorio'); valid = false }
+  return valid
+}
+
 async function save() {
+  errors.value = []
+  if (!validate()) return
+
   try {
+    const payload = {
+      rfc: form.value.rfc,
+      nombre: form.value.nombre,
+      sector: form.value.sector,
+      telefono: form.value.telefono,
+      direccion: form.value.direccion,
+      contacto_nombre: form.value.contacto_nombre,
+      contacto_email: form.value.contacto_email,
+    }
     if (editing.value) {
-      const payload = { ...form.value }
-      delete payload.password
-      const { data } = await client.put(`/admin/empresas/${form.value.id}`, payload)
-      Object.assign(items.value.find(i => i.id === form.value.id), data)
+      payload.password = form.value.password || null
+      const { data } = await client.put(`/admin/empresas/${editingId.value}`, payload)
+      Object.assign(items.value.find(i => i.id === editingId.value), data)
       flash.value = 'Empresa actualizada correctamente'
     } else {
-      const { data } = await client.post('/admin/empresas', form.value)
+      payload.password = form.value.password
+      const { data } = await client.post('/admin/empresas', payload)
       items.value.push(data)
       flash.value = 'Empresa creada correctamente'
     }
     showModal.value = false
   } catch (e) {
-    error.value = e.response?.data?.detail || 'Error al guardar'
+    const detail = e.response?.data?.detail
+    if (Array.isArray(detail)) {
+      errors.value = detail.map(d => d.msg || JSON.stringify(d))
+    } else if (typeof detail === 'string') {
+      errors.value = [detail]
+    } else {
+      errors.value = ['Error al guardar']
+    }
   }
 }
 
@@ -157,7 +239,14 @@ async function doDelete() {
     flash.value = 'Empresa eliminada correctamente'
     deleteTarget.value = null
   } catch (e) {
-    error.value = e.response?.data?.detail || 'Error al eliminar'
+    const detail = e.response?.data?.detail
+    if (Array.isArray(detail)) {
+      errors.value = detail.map(d => d.msg || JSON.stringify(d))
+    } else if (typeof detail === 'string') {
+      errors.value = [detail]
+    } else {
+      errors.value = ['Error al eliminar']
+    }
   }
 }
 </script>

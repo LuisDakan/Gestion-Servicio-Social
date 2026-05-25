@@ -18,10 +18,12 @@ def upgrade() -> None:
     op.create_table(
         "carreras",
         sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("clave", sa.Integer(), nullable=False),
         sa.Column("nombre", sa.String(255), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=True),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("clave"),
     )
     op.create_table(
         "users",

@@ -11,25 +11,25 @@
           <svg class="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         </div>
         <h2 class="text-xl font-bold text-gray-900">Postular a vacante</h2>
-        <p class="text-sm text-gray-500 mt-1">Completa los datos para enviar tu solicitud</p>
+        <p class="text-sm text-gray-500 mt-1">Sube los 3 documentos en PDF para enviar tu solicitud</p>
       </div>
 
       <form @submit.prevent="submit" enctype="multipart/form-data" class="space-y-4">
         <div v-if="errorMsg" class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">{{ errorMsg }}</div>
 
         <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">CV (PDF)</label>
+          <input type="file" accept=".pdf" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" @change="e => files.cv = e.target.files[0]" required />
+        </div>
+
+        <div>
           <label class="block text-sm font-medium text-gray-700 mb-1.5">Carta de presentación (PDF)</label>
-          <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-slate-400 transition-colors cursor-pointer" @click="fileInput?.click()">
-            <div class="text-center">
-              <svg class="mx-auto h-10 w-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-              <p class="mt-2 text-sm text-gray-500">
-                <span class="font-medium text-slate-700">Haz clic para subir</span> o arrastra un archivo
-              </p>
-              <p class="text-xs text-gray-400 mt-1">PDF hasta 5 MB</p>
-              <p v-if="selectedFile" class="text-xs text-emerald-600 font-medium mt-2">{{ selectedFile.name }}</p>
-            </div>
-            <input ref="fileInput" type="file" accept=".pdf" class="hidden" @change="onFileChange" />
-          </div>
+          <input type="file" accept=".pdf" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" @change="e => files.carta = e.target.files[0]" required />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Historial académico (PDF)</label>
+          <input type="file" accept=".pdf" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" @change="e => files.historial = e.target.files[0]" required />
         </div>
 
         <button type="submit" :disabled="loading" class="w-full py-2.5 px-4 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
@@ -56,38 +56,47 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 import { useRoute } from 'vue-router'
 import client from '../../api/client'
 
 const route = useRoute()
 const vacanteId = route.params.id
-const selectedFile = ref(null)
-const fileInput = ref(null)
+const files = reactive({ cv: null, carta: null, historial: null })
 const loading = ref(false)
 const errorMsg = ref('')
 const result = ref(null)
 
-function onFileChange(e) {
-  selectedFile.value = e.target.files[0] || null
-}
-
 async function submit() {
-  if (!selectedFile.value) {
-    errorMsg.value = 'Debes seleccionar un archivo PDF.'
+  if (!files.cv || !files.carta || !files.historial) {
+    errorMsg.value = 'Debes subir los 3 documentos en PDF.'
     return
+  }
+  for (const key of ['cv', 'carta', 'historial']) {
+    if (files[key].type !== 'application/pdf') {
+      errorMsg.value = 'Todos los archivos deben ser PDF.'
+      return
+    }
   }
   loading.value = true
   errorMsg.value = ''
   const formData = new FormData()
-  formData.append('archivo', selectedFile.value)
+  formData.append('vacante_id', vacanteId)
+  formData.append('cv', files.cv)
+  formData.append('carta', files.carta)
+  formData.append('historial', files.historial)
   try {
-    const { data } = await client.post(`/alumno/vacantes/${vacanteId}/postular`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    const { data } = await client.post('/alumno/solicitudes', formData)
     result.value = data
   } catch (e) {
-    errorMsg.value = e.response?.data?.detail || 'Error al enviar postulación.'
+    const detail = e.response?.data?.detail
+    if (Array.isArray(detail)) {
+      errorMsg.value = detail.map(d => d.msg || JSON.stringify(d)).join(', ')
+    } else if (typeof detail === 'string') {
+      errorMsg.value = detail
+    } else {
+      errorMsg.value = 'Error al enviar postulación'
+    }
   } finally {
     loading.value = false
   }

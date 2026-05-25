@@ -12,19 +12,21 @@
       <table class="w-full">
         <thead>
           <tr class="bg-gray-50 border-b border-gray-200">
-            <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">No. Cuenta</th>
+            <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Matrícula</th>
             <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Nombre</th>
             <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Carrera</th>
             <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Teléfono</th>
+            <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Semestre</th>
             <th class="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Acciones</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
           <tr v-for="item in items" :key="item.id" class="hover:bg-gray-50 transition-colors">
-            <td class="px-5 py-3.5 text-sm font-mono text-gray-800">{{ item.no_cuenta }}</td>
-            <td class="px-5 py-3.5 text-sm text-gray-800">{{ item.nombre }}</td>
-            <td class="px-5 py-3.5 text-sm text-gray-500">{{ item.carrera_nombre || item.carrera?.nombre || '-' }}</td>
-            <td class="px-5 py-3.5 text-sm text-gray-500">{{ item.telefono || item.phone || '-' }}</td>
+            <td class="px-5 py-3.5 text-sm font-mono text-gray-800">{{ item.matricula }}</td>
+            <td class="px-5 py-3.5 text-sm text-gray-800">{{ item.nombre }} {{ item.ap_pat }} {{ item.ap_mat }}</td>
+            <td class="px-5 py-3.5 text-sm text-gray-500">{{ item.carrera_nombre || '-' }}</td>
+            <td class="px-5 py-3.5 text-sm text-gray-500">{{ item.telefono || '-' }}</td>
+            <td class="px-5 py-3.5 text-sm text-gray-500">{{ item.semestre || '-' }}</td>
             <td class="px-5 py-3.5 text-right">
               <button @click="openEdit(item)" class="text-gray-400 hover:text-blue-600 mr-3 transition-colors" title="Editar">
                 <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
@@ -42,36 +44,47 @@
       <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6">
         <h3 class="text-lg font-semibold mb-4">{{ editing ? 'Editar alumno' : 'Nuevo alumno' }}</h3>
         <form @submit.prevent="save">
-          <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">No. Cuenta</label>
-              <input v-model="form.no_cuenta" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" required />
+              <label class="block text-sm font-medium text-gray-700 mb-1">Matrícula</label>
+              <input v-model="form.matricula" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" required />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Carrera</label>
+              <select v-model="form.carrera_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" required>
+                <option value="" disabled>Selecciona</option>
+                <option v-for="c in carreras" :key="c.id" :value="c.id">{{ c.nombre }}</option>
+              </select>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
               <input v-model="form.nombre" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" required />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Carrera</label>
-              <select v-model="form.carrera_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" required>
-                <option value="" disabled>Selecciona carrera</option>
-                <option v-for="c in carreras" :key="c.id" :value="c.id">{{ c.nombre }}</option>
-              </select>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Apellido paterno</label>
+              <input v-model="form.ap_pat" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" required />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Apellido materno</label>
+              <input v-model="form.ap_mat" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" required />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Semestre</label>
+              <input v-model.number="form.semestre" type="number" min="1" max="12" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Promedio</label>
+              <input v-model.number="form.promedio" type="number" min="0" max="10" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
               <input v-model="form.telefono" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" />
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input v-model="form.email" type="email" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" />
-            </div>
-            <div v-if="!editing">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-              <input v-model="form.password" type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" :required="!editing" />
-            </div>
           </div>
-          <div class="flex justify-end gap-3 mt-6">
+          <div class="text-xs text-gray-400 mt-3">
+            El usuario se crea automáticamente con la matrícula como username y contraseña.
+          </div>
+          <div class="flex justify-end gap-3 mt-4">
             <button type="button" @click="showModal = false" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors">Cancelar</button>
             <button type="submit" class="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors">
               {{ editing ? 'Guardar' : 'Crear' }}
@@ -87,7 +100,7 @@
           <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
         </div>
         <h3 class="text-lg font-semibold mb-2">Eliminar alumno</h3>
-        <p class="text-sm text-gray-500 mb-6">¿Eliminar a "{{ deleteTarget.nombre }}"? Esta acción no se puede deshacer.</p>
+        <p class="text-sm text-gray-500 mb-6">¿Eliminar a "{{ deleteTarget.nombre }} {{ deleteTarget.ap_pat }}"? Esta acción no se puede deshacer.</p>
         <div class="flex justify-center gap-3">
           <button @click="deleteTarget = null" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors">Cancelar</button>
           <button @click="doDelete" class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors">Eliminar</button>
@@ -108,7 +121,8 @@ const carreras = ref([])
 const showModal = ref(false)
 const editing = ref(false)
 const deleteTarget = ref(null)
-const form = ref({ no_cuenta: '', nombre: '', carrera_id: '', telefono: '', email: '', password: '' })
+const editingId = ref(null)
+const form = ref({ matricula: '', nombre: '', ap_pat: '', ap_mat: '', carrera_id: '', telefono: '', semestre: null, promedio: null })
 
 onMounted(async () => {
   const [alumnosRes, carrerasRes] = await Promise.all([
@@ -121,26 +135,44 @@ onMounted(async () => {
 
 function openCreate() {
   editing.value = false
-  form.value = { no_cuenta: '', nombre: '', carrera_id: '', telefono: '', email: '', password: '' }
+  form.value = { matricula: '', nombre: '', ap_pat: '', ap_mat: '', carrera_id: '', telefono: '', semestre: null, promedio: null }
   showModal.value = true
 }
 
 function openEdit(item) {
   editing.value = true
-  form.value = { ...item, carrera_id: item.carrera_id || item.carrera?.id || '' }
+  editingId.value = item.id
+  form.value = {
+    matricula: item.matricula,
+    nombre: item.nombre,
+    ap_pat: item.ap_pat,
+    ap_mat: item.ap_mat,
+    carrera_id: item.carrera_id,
+    telefono: item.telefono || '',
+    semestre: item.semestre,
+    promedio: item.promedio,
+  }
   showModal.value = true
 }
 
 async function save() {
   try {
+    const payload = {
+      matricula: form.value.matricula,
+      nombre: form.value.nombre,
+      ap_pat: form.value.ap_pat,
+      ap_mat: form.value.ap_mat,
+      carrera_id: form.value.carrera_id,
+      telefono: form.value.telefono || null,
+      semestre: form.value.semestre || null,
+      promedio: form.value.promedio || null,
+    }
     if (editing.value) {
-      const payload = { ...form.value }
-      delete payload.password
-      const { data } = await client.put(`/admin/alumnos/${form.value.id}`, payload)
-      Object.assign(items.value.find(i => i.id === form.value.id), data)
+      const { data } = await client.put(`/admin/alumnos/${editingId.value}`, payload)
+      Object.assign(items.value.find(i => i.id === editingId.value), data)
       flash.value = 'Alumno actualizado correctamente'
     } else {
-      const { data } = await client.post('/admin/alumnos', form.value)
+      const { data } = await client.post('/admin/alumnos', payload)
       items.value.push(data)
       flash.value = 'Alumno creado correctamente'
     }

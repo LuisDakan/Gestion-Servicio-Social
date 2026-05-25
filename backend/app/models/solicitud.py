@@ -10,6 +10,7 @@ class EstatusEnum(str, enum.Enum):
     pendiente = "pendiente"
     aceptado = "aceptado"
     rechazado = "rechazado"
+    cancelado = "cancelado"
 
 
 class Solicitud(Base):

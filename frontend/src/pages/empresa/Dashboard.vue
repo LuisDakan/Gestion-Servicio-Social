@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
       <div class="bg-white rounded-xl border border-gray-200 p-5">
         <div class="flex items-center justify-between">
           <div>
@@ -34,28 +34,7 @@
           </div>
         </div>
       </div>
-      <div class="bg-white rounded-xl border border-gray-200 p-5">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm text-gray-500 font-medium">Aceptados</p>
-            <p class="text-2xl font-bold mt-1 text-emerald-600">{{ stats.aceptados ?? '-' }}</p>
-          </div>
-          <div class="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          </div>
-        </div>
-      </div>
-      <div class="bg-white rounded-xl border border-gray-200 p-5">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm text-gray-500 font-medium">Rechazados</p>
-            <p class="text-2xl font-bold mt-1 text-red-600">{{ stats.rechazados ?? '-' }}</p>
-          </div>
-          <div class="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center text-red-600">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          </div>
-        </div>
-      </div>
+
     </div>
 
     <div class="bg-white rounded-xl border border-gray-200 p-5">
@@ -67,9 +46,9 @@
         <div v-for="v in stats.vacantes_lista.slice(0, 5)" :key="v.id" class="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
           <div>
             <p class="text-sm font-medium text-gray-800">{{ v.titulo }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">{{ v.postulantes_count || 0 }} postulantes</p>
+            <p class="text-xs text-gray-400 mt-0.5">{{ v.solicitudes_count || 0 }} postulantes</p>
           </div>
-          <span :class="v.status === 'abierta' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'" class="text-xs font-medium px-2 py-0.5 rounded-full">{{ v.status }}</span>
+          <span :class="v.status === 'abierta' ? 'bg-emerald-100 text-emerald-700' : v.status === 'finalizada' ? 'bg-gray-100 text-gray-600' : 'bg-red-100 text-red-700'" class="text-xs font-medium px-2 py-0.5 rounded-full">{{ v.status }}</span>
         </div>
       </div>
       <div v-else class="text-sm text-gray-400 py-6 text-center">

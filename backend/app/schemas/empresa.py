@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 
 
@@ -12,6 +12,13 @@ class EmpresaCreate(BaseModel):
     contacto_email: str
     password: str
     activa: bool = True
+
+    @field_validator("password")
+    @classmethod
+    def password_min_length(cls, v):
+        if len(v) < 8:
+            raise ValueError("La contraseña debe tener al menos 8 caracteres")
+        return v
 
 
 class EmpresaUpdate(BaseModel):

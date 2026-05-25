@@ -43,7 +43,7 @@
           <div class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Clave</label>
-              <input v-model="form.clave" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" required />
+              <input v-model.number="form.clave" type="number" min="1000" max="9999" step="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 focus:border-transparent" required placeholder="Ej: 1234" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
@@ -86,7 +86,7 @@ const items = ref([])
 const showModal = ref(false)
 const editing = ref(false)
 const deleteTarget = ref(null)
-const form = ref({ clave: '', nombre: '' })
+const form = ref({ clave: null, nombre: '' })
 
 onMounted(async () => {
   const { data } = await client.get('/admin/carreras')
@@ -95,7 +95,7 @@ onMounted(async () => {
 
 function openCreate() {
   editing.value = false
-  form.value = { clave: '', nombre: '' }
+  form.value = { clave: null, nombre: '' }
   showModal.value = true
 }
 

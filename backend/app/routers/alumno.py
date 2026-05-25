@@ -1,6 +1,6 @@
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from sqlalchemy.orm import Session
 
@@ -28,24 +28,27 @@ def _get_alumno(current_user: User, db: Session) -> Alumno:
     return alumno
 
 
-def _vacante_with_counts(v: Vacante):
-    registradas = len(v.solicitudes) if v.solicitudes else 0
+def _vacante_light(v: Vacante, alumno_id: int | None = None):
+    registradas = (
+        sum(1 for s in v.solicitudes if s.estatus != EstatusEnum.cancelado)
+        if v.solicitudes else 0
+    )
     aceptadas = (
         sum(1 for s in v.solicitudes if s.estatus == EstatusEnum.aceptado)
-        if v.solicitudes
-        else 0
+        if v.solicitudes else 0
     )
     confirmadas = (
-        sum(
-            1
-            for s in v.solicitudes
-            if s.estatus == EstatusEnum.aceptado and s.confirmada_por_alumno
-        )
-        if v.solicitudes
-        else 0
+        sum(1 for s in v.solicitudes if s.estatus == EstatusEnum.aceptado and s.confirmada_por_alumno)
+        if v.solicitudes else 0
     )
-    is_closed = v.cerrada_manualmente or not v.activa or registradas >= v.limite_registros or aceptadas >= v.cupo_maximo
-    return {
+    is_closed = v.finalizada or v.cerrada_manualmente or not v.activa or aceptadas >= v.cupo_maximo or confirmadas >= v.cupo_maximo
+    if v.finalizada:
+        status = "finalizada"
+    elif is_closed:
+        status = "cerrada"
+    else:
+        status = "abierta"
+    result = {
         "id": v.id,
         "empresa_id": v.empresa_id,
         "empresa_nombre": v.empresa_nombre,
@@ -58,10 +61,40 @@ def _vacante_with_counts(v: Vacante):
         "limite_registros": v.limite_registros,
         "activa": v.activa,
         "cerrada_manualmente": v.cerrada_manualmente,
+        "finalizada": v.finalizada,
         "solicitudes_count": registradas,
         "solicitudes_aceptadas_count": aceptadas,
         "solicitudes_confirmadas_count": confirmadas,
         "is_closed": is_closed,
+        "status": status,
+    }
+    if alumno_id is not None:
+        existing = (
+            v.solicitudes
+            and next(
+                (s for s in v.solicitudes if s.alumno_id == alumno_id), None
+            )
+        )
+        if existing:
+            result["ha_aplicado"] = True
+            result["status_aplicacion"] = existing.estatus.value
+        else:
+            result["ha_aplicado"] = False
+            result["status_aplicacion"] = None
+    return result
+
+
+def _solicitud_to_dict(s: Solicitud):
+    return {
+        "id": s.id,
+        "vacante_id": s.vacante_id,
+        "vacante_titulo": s.vacante.titulo if s.vacante else "",
+        "empresa_nombre": s.vacante.empresa_nombre if s.vacante else "",
+        "estatus": s.estatus.value,
+        "confirmada": s.confirmada_por_alumno,
+        "codigo_confirmacion": s.codigo_confirmacion,
+        "fecha_limite": s.fecha_limite_respuesta.isoformat() if s.fecha_limite_respuesta else None,
+        "respondido_en": s.respondido_en.isoformat() if s.respondido_en else None,
     }
 
 
@@ -72,26 +105,58 @@ def alumno_dashboard(
 ):
     expirar_aceptaciones_vencidas(db)
     alumno = _get_alumno(current_user, db)
-    solicitudes = (
+
+    all_solicitudes = (
         db.query(Solicitud)
         .filter(Solicitud.alumno_id == alumno.id)
         .order_by(Solicitud.id.desc())
         .all()
     )
-    ofertas_pendientes = [
-        s
-        for s in solicitudes
-        if s.estatus == EstatusEnum.aceptado and not s.confirmada_por_alumno
-    ]
-    confirmadas = [
-        s
-        for s in solicitudes
-        if s.estatus == EstatusEnum.aceptado and s.confirmada_por_alumno
-    ]
-    pendientes_count = sum(1 for s in solicitudes if s.estatus == EstatusEnum.pendiente)
-    rechazadas_count = sum(
-        1 for s in solicitudes if s.estatus == EstatusEnum.rechazado
+
+    pendientes = [s for s in all_solicitudes if s.estatus == EstatusEnum.pendiente]
+    por_confirmar = [s for s in all_solicitudes if s.estatus == EstatusEnum.aceptado and not s.confirmada_por_alumno]
+    confirmada = next(
+        (s for s in all_solicitudes if s.estatus == EstatusEnum.aceptado and s.confirmada_por_alumno and not s.vacante.finalizada),
+        None,
     )
+    cancelada = next(
+        (s for s in all_solicitudes if s.estatus == EstatusEnum.cancelado),
+        None,
+    )
+    finalizada = next(
+        (s for s in all_solicitudes if s.estatus == EstatusEnum.aceptado and s.confirmada_por_alumno and s.vacante and s.vacante.finalizada),
+        None,
+    )
+
+    servicio_completado = finalizada is not None
+    servicio_cancelado = (
+        cancelada is not None
+        and not servicio_completado
+        and not pendientes
+        and not por_confirmar
+        and all_solicitudes
+        and all_solicitudes[0].id == cancelada.id
+    )
+
+    # Available vacantes — only shown if no confirmed and not completed
+    if servicio_completado or confirmada is not None:
+        vacantes_disponibles = []
+    else:
+        # Get vacantes the alumno already has an active solicitud for (pendiente or aceptado)
+        active_vacante_ids = set(
+            s.vacante_id for s in all_solicitudes
+            if s.estatus in (EstatusEnum.pendiente, EstatusEnum.aceptado)
+        )
+        query = db.query(Vacante).filter(
+            Vacante.activa == True,
+            Vacante.cerrada_manualmente == False,
+            Vacante.finalizada == False,
+        )
+        if active_vacante_ids:
+            query = query.filter(~Vacante.id.in_(active_vacante_ids))
+        open_vacantes = query.order_by(Vacante.id.desc()).all()
+        vacantes_disponibles = [_vacante_light(v, alumno.id) for v in open_vacantes]
+
     return {
         "alumno": {
             "id": alumno.id,
@@ -99,48 +164,54 @@ def alumno_dashboard(
             "matricula": alumno.matricula,
             "carrera": alumno.carrera.nombre if alumno.carrera else None,
         },
-        "metricas": {
-            "solicitudes_enviadas": len(solicitudes),
-            "pendientes": pendientes_count,
-            "ofertas_pendientes": len(ofertas_pendientes),
-            "vacantes_confirmadas": len(confirmadas),
-            "rechazadas": rechazadas_count,
+        "servicio_completado": servicio_completado,
+        "servicio_cancelado": servicio_cancelado,
+        "vacantes_disponibles": vacantes_disponibles,
+        "mis_postulaciones": {
+            "pendientes": [_solicitud_to_dict(s) for s in pendientes],
+            "por_confirmar": [_solicitud_to_dict(s) for s in por_confirmar],
+            "confirmada": _solicitud_to_dict(confirmada) if confirmada else None,
+            "cancelada": _solicitud_to_dict(cancelada) if cancelada else None,
+            "finalizada": _solicitud_to_dict(finalizada) if finalizada else None,
+            "rechazadas": [_solicitud_to_dict(s) for s in all_solicitudes if s.estatus == EstatusEnum.rechazado],
         },
-        "ofertas_pendientes": [
-            {
-                "solicitud_id": s.id,
-                "vacante_titulo": s.vacante.titulo if s.vacante else "",
-                "fecha_limite": s.fecha_limite_respuesta.isoformat()
-                if s.fecha_limite_respuesta
-                else None,
-            }
-            for s in ofertas_pendientes
-        ],
-        "asignaciones_confirmadas": [
-            {
-                "solicitud_id": s.id,
-                "vacante_titulo": s.vacante.titulo if s.vacante else "",
-                "empresa": s.vacante.empresa_nombre if s.vacante else "",
-            }
-            for s in confirmadas
-        ],
     }
 
 
-# ---- Vacantes catalog ----
+# ---- Mis postulaciones (replaces catalog) ----
 @router.get("/vacantes")
-def list_vacantes(
+def list_mis_postulaciones(
     current_user: User = alumno_only, db: Session = Depends(get_db)
 ):
     expirar_aceptaciones_vencidas(db)
-    vacantes = (
-        db.query(Vacante)
-        .filter(Vacante.activa == True, Vacante.cerrada_manualmente == False)
-        .order_by(Vacante.id.desc())
-        .limit(50)
+    alumno = _get_alumno(current_user, db)
+    all_solicitudes = (
+        db.query(Solicitud)
+        .filter(Solicitud.alumno_id == alumno.id)
+        .order_by(Solicitud.id.desc())
         .all()
     )
-    return [_vacante_with_counts(v) for v in vacantes]
+
+    pendientes = [s for s in all_solicitudes if s.estatus == EstatusEnum.pendiente]
+    por_confirmar = [s for s in all_solicitudes if s.estatus == EstatusEnum.aceptado and not s.confirmada_por_alumno]
+    confirmada = next(
+        (s for s in all_solicitudes if s.estatus == EstatusEnum.aceptado and s.confirmada_por_alumno and not (s.vacante and s.vacante.finalizada)),
+        None,
+    )
+    cancelada = next(
+        (s for s in all_solicitudes if s.estatus == EstatusEnum.cancelado),
+        None,
+    )
+
+    rechazadas = [s for s in all_solicitudes if s.estatus == EstatusEnum.rechazado]
+
+    return {
+        "pendientes": [_solicitud_to_dict(s) for s in pendientes],
+        "por_confirmar": [_solicitud_to_dict(s) for s in por_confirmar],
+        "confirmada": _solicitud_to_dict(confirmada) if confirmada else None,
+        "cancelada": _solicitud_to_dict(cancelada) if cancelada else None,
+        "rechazadas": [_solicitud_to_dict(s) for s in rechazadas],
+    }
 
 
 @router.get("/vacantes/{id}")
@@ -149,10 +220,11 @@ def get_vacante(
     current_user: User = alumno_only,
     db: Session = Depends(get_db),
 ):
+    alumno = _get_alumno(current_user, db)
     v = db.query(Vacante).filter(Vacante.id == id).first()
     if not v:
         raise HTTPException(status_code=404)
-    return _vacante_with_counts(v)
+    return _vacante_light(v, alumno.id)
 
 
 # ---- Apply ----
@@ -175,6 +247,30 @@ def apply(
     if not vacante:
         raise HTTPException(status_code=404, detail="Vacante no encontrada")
 
+    # Check if there's already a pendiente or aceptado solicitud for this vacante
+    existing = (
+        db.query(Solicitud)
+        .filter(
+            Solicitud.alumno_id == alumno.id,
+            Solicitud.vacante_id == vacante.id,
+        )
+        .first()
+    )
+    if existing:
+        if existing.estatus in (EstatusEnum.pendiente, EstatusEnum.aceptado):
+            raise HTTPException(
+                status_code=400,
+                detail="Ya has aplicado a esta vacante anteriormente",
+            )
+        if existing.estatus == EstatusEnum.rechazado:
+            rejection_time = existing.respondido_en
+            if rejection_time and (datetime.utcnow() - rejection_time).days < 7:
+                remaining = 7 - (datetime.utcnow() - rejection_time).days
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Debes esperar {remaining} día(s) para reaplicar a esta vacante",
+                )
+
     # Check availability
     registradas = (
         db.query(Solicitud).filter(Solicitud.vacante_id == vacante.id).count()
@@ -190,8 +286,10 @@ def apply(
     if vacante.cerrada_manualmente or not vacante.activa or registradas >= vacante.limite_registros or aceptadas >= vacante.cupo_maximo:
         raise HTTPException(status_code=400, detail="Vacante no disponible")
 
+    # Check if student has a confirmed (not canceled/finalized) solicitud
     already_confirmed = (
         db.query(Solicitud)
+        .join(Vacante)
         .filter(
             Solicitud.alumno_id == alumno.id,
             Solicitud.estatus == EstatusEnum.aceptado,
@@ -200,6 +298,10 @@ def apply(
         .first()
     )
     if already_confirmed:
+        if already_confirmed.vacante and already_confirmed.vacante.finalizada:
+            raise HTTPException(
+                status_code=400, detail="Ya completaste tu servicio social"
+            )
         raise HTTPException(
             status_code=400, detail="Ya confirmaste otra vacante"
         )
@@ -276,12 +378,24 @@ def confirmar(
     solicitud.confirmada_por_alumno = True
     solicitud.respondido_en = datetime.now(timezone.utc)
 
-    # Reject other pending acceptances
+    # Cancel other pending acceptances
     db.query(Solicitud).filter(
         Solicitud.alumno_id == alumno.id,
         Solicitud.id != solicitud.id,
         Solicitud.estatus == EstatusEnum.aceptado,
         Solicitud.confirmada_por_alumno == False,
+    ).update(
+        {
+            Solicitud.estatus: EstatusEnum.rechazado,
+            Solicitud.respondido_en: datetime.now(timezone.utc),
+        }
+    )
+
+    # Cancel other pending applications
+    db.query(Solicitud).filter(
+        Solicitud.alumno_id == alumno.id,
+        Solicitud.id != solicitud.id,
+        Solicitud.estatus == EstatusEnum.pendiente,
     ).update(
         {
             Solicitud.estatus: EstatusEnum.rechazado,

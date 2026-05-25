@@ -61,10 +61,14 @@ def list_carreras(db: Session = Depends(get_db), _=admin_only):
 
 @router.post("/carreras", response_model=CarreraOut, status_code=201)
 def create_carrera(data: CarreraCreate, db: Session = Depends(get_db), _=admin_only):
-    exists = db.query(Carrera).filter(Carrera.nombre == data.nombre).first()
+    exists = (
+        db.query(Carrera)
+        .filter((Carrera.nombre == data.nombre) | (Carrera.clave == data.clave))
+        .first()
+    )
     if exists:
-        raise HTTPException(status_code=400, detail="Ya existe una carrera con ese nombre")
-    c = Carrera(nombre=data.nombre)
+        raise HTTPException(status_code=400, detail="Ya existe una carrera con esa clave o nombre")
+    c = Carrera(clave=data.clave, nombre=data.nombre)
     db.add(c)
     db.commit()
     db.refresh(c)
@@ -78,6 +82,7 @@ def update_carrera(
     c = db.query(Carrera).filter(Carrera.id == id).first()
     if not c:
         raise HTTPException(status_code=404)
+    c.clave = data.clave
     c.nombre = data.nombre
     db.commit()
     db.refresh(c)
@@ -206,6 +211,8 @@ def create_empresa(data: EmpresaCreate, db: Session = Depends(get_db), _=admin_o
     rfc_up = data.rfc.upper().strip()
     if db.query(User).filter(User.username == rfc_up).first():
         raise HTTPException(status_code=400, detail="RFC ya registrado como usuario")
+    if db.query(User).filter(User.email == data.contacto_email).first():
+        raise HTTPException(status_code=400, detail="El correo electrónico ya está registrado")
     user = User(
         name=data.contacto_nombre,
         email=data.contacto_email,
@@ -242,6 +249,9 @@ def update_empresa(
     rfc_up = data.rfc.upper().strip()
     user = db.query(User).filter(User.id == emp.user_id).first()
     if user:
+        existing = db.query(User).filter(User.email == data.contacto_email, User.id != user.id).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="El correo electrónico ya está registrado")
         user.name = data.contacto_nombre
         user.email = data.contacto_email
         user.username = rfc_up

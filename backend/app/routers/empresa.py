@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -29,7 +30,10 @@ def _get_empresa(current_user: User, db: Session) -> Empresa:
 
 
 def _vacante_to_dict(v: Vacante):
-    registradas = len(v.solicitudes) if v.solicitudes else 0
+    registradas = (
+        sum(1 for s in v.solicitudes if s.estatus != EstatusEnum.cancelado)
+        if v.solicitudes else 0
+    )
     aceptadas = (
         sum(1 for s in v.solicitudes if s.estatus == EstatusEnum.aceptado)
         if v.solicitudes
@@ -45,11 +49,18 @@ def _vacante_to_dict(v: Vacante):
         else 0
     )
     is_closed = (
-        v.cerrada_manualmente
+        v.finalizada
+        or v.cerrada_manualmente
         or not v.activa
-        or registradas >= v.limite_registros
         or aceptadas >= v.cupo_maximo
+        or confirmadas >= v.cupo_maximo
     )
+    if v.finalizada:
+        status = "finalizada"
+    elif is_closed:
+        status = "cerrada"
+    else:
+        status = "abierta"
     return {
         "id": v.id,
         "empresa_id": v.empresa_id,
@@ -63,10 +74,12 @@ def _vacante_to_dict(v: Vacante):
         "limite_registros": v.limite_registros,
         "activa": v.activa,
         "cerrada_manualmente": v.cerrada_manualmente,
+        "finalizada": v.finalizada,
         "solicitudes_count": registradas,
         "solicitudes_aceptadas_count": aceptadas,
         "solicitudes_confirmadas_count": confirmadas,
         "is_closed": is_closed,
+        "status": status,
     }
 
 
@@ -79,48 +92,37 @@ def empresa_dashboard(
     emp = _get_empresa(current_user, db)
     vacantes = db.query(Vacante).filter(Vacante.empresa_id == emp.id).all()
 
-    vacantes_abiertas = sum(
-        1 for v in vacantes if v.activa and not v.cerrada_manualmente
-    )
-    postulaciones_pendientes = (
-        db.query(Solicitud)
-        .join(Vacante)
-        .filter(
-            Vacante.empresa_id == emp.id,
-            Solicitud.estatus == EstatusEnum.pendiente,
+    vacantes_abiertas = 0
+    for v in vacantes:
+        if v.finalizada or not v.activa or v.cerrada_manualmente:
+            continue
+        aceptadas = (
+            sum(1 for s in v.solicitudes if s.estatus == EstatusEnum.aceptado)
+            if v.solicitudes else 0
         )
-        .count()
-    )
-    aceptadas_por_confirmar = (
-        db.query(Solicitud)
-        .join(Vacante)
-        .filter(
-            Vacante.empresa_id == emp.id,
-            Solicitud.estatus == EstatusEnum.aceptado,
-            Solicitud.confirmada_por_alumno == False,
+        confirmadas = (
+            sum(1 for s in v.solicitudes if s.estatus == EstatusEnum.aceptado and s.confirmada_por_alumno)
+            if v.solicitudes else 0
         )
-        .count()
-    )
-    confirmadas = (
+        if aceptadas < v.cupo_maximo and confirmadas < v.cupo_maximo:
+            vacantes_abiertas += 1
+
+    postulantes_activos = (
         db.query(Solicitud)
         .join(Vacante)
         .filter(
             Vacante.empresa_id == emp.id,
-            Solicitud.estatus == EstatusEnum.aceptado,
-            Solicitud.confirmada_por_alumno == True,
+            Vacante.finalizada == False,
+            Solicitud.estatus.in_([EstatusEnum.pendiente, EstatusEnum.aceptado]),
         )
         .count()
     )
 
     return {
-        "metricas": {
-            "vacantes_publicadas": len(vacantes),
-            "vacantes_abiertas": vacantes_abiertas,
-            "postulaciones_pendientes": postulaciones_pendientes,
-            "aceptadas_por_confirmar": aceptadas_por_confirmar,
-            "confirmadas": confirmadas,
-        },
-        "vacantes_recientes": [_vacante_to_dict(v) for v in vacantes[-5:]],
+        "vacantes": len(vacantes),
+        "abiertas": vacantes_abiertas,
+        "postulantes": postulantes_activos,
+        "vacantes_lista": [_vacante_to_dict(v) for v in vacantes[-5:]],
     }
 
 
@@ -231,6 +233,27 @@ def toggle_vacante(
     return _vacante_to_dict(v)
 
 
+@router.post("/vacantes/{id}/finalizar")
+def finalizar_vacante(
+    id: int,
+    current_user: User = empresa_only,
+    db: Session = Depends(get_db),
+):
+    emp = _get_empresa(current_user, db)
+    v = (
+        db.query(Vacante)
+        .filter(Vacante.id == id, Vacante.empresa_id == emp.id)
+        .first()
+    )
+    if not v:
+        raise HTTPException(status_code=404)
+    v.finalizada = True
+    v.activa = False
+    db.commit()
+    db.refresh(v)
+    return _vacante_to_dict(v)
+
+
 # ---- Postulantes ----
 @router.get("/vacantes/{id}/postulantes")
 def list_postulantes(
@@ -254,11 +277,15 @@ def list_postulantes(
             "id": s.id,
             "alumno_nombre": s.alumno.nombre if s.alumno else "N/A",
             "alumno_matricula": s.alumno.matricula if s.alumno else "N/A",
+            "alumno_carrera": s.alumno.carrera.nombre if s.alumno and s.alumno.carrera else "",
             "estatus": s.estatus.value,
             "confirmada": s.confirmada_por_alumno,
             "fecha_limite": s.fecha_limite_respuesta.isoformat()
             if s.fecha_limite_respuesta
             else None,
+            "tiene_cv": bool(s.cv),
+            "tiene_carta": bool(s.carta),
+            "tiene_historial": bool(s.historial),
         }
         for s in solicitudes
     ]
@@ -286,9 +313,6 @@ def aceptar_solicitud(
         raise HTTPException(status_code=404)
     vacante = solicitud.vacante
 
-    registradas = (
-        db.query(Solicitud).filter(Solicitud.vacante_id == vacante.id).count()
-    )
     aceptadas = (
         db.query(Solicitud)
         .filter(
@@ -300,7 +324,6 @@ def aceptar_solicitud(
     if (
         vacante.cerrada_manualmente
         or not vacante.activa
-        or registradas >= vacante.limite_registros
         or aceptadas >= vacante.cupo_maximo
     ):
         raise HTTPException(
@@ -351,8 +374,38 @@ def rechazar_solicitud(
     if not solicitud:
         raise HTTPException(status_code=404)
     solicitud.estatus = EstatusEnum.rechazado
+    solicitud.respondido_en = datetime.now(timezone.utc)
     db.commit()
     return {"mensaje": "Solicitud rechazada"}
+
+
+@router.post("/solicitudes/{id}/cancelar")
+def cancelar_solicitud(
+    id: int,
+    current_user: User = empresa_only,
+    db: Session = Depends(get_db),
+):
+    emp = _get_empresa(current_user, db)
+    solicitud = (
+        db.query(Solicitud)
+        .join(Vacante)
+        .filter(
+            Solicitud.id == id,
+            Vacante.empresa_id == emp.id,
+        )
+        .first()
+    )
+    if not solicitud:
+        raise HTTPException(status_code=404)
+    if solicitud.estatus != EstatusEnum.aceptado or not solicitud.confirmada_por_alumno:
+        raise HTTPException(
+            status_code=400,
+            detail="Solo se pueden cancelar postulaciones confirmadas",
+        )
+    solicitud.estatus = EstatusEnum.cancelado
+    solicitud.respondido_en = datetime.now(timezone.utc)
+    db.commit()
+    return {"mensaje": "Servicio social cancelado"}
 
 
 # ---- PDF document download ----

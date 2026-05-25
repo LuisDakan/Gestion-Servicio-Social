@@ -1,0 +1,5 @@
+FROM prom/prom/prometheus
+
+WORKDIR /etc/prometheus
+
+RUN []
