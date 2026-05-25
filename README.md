@@ -50,12 +50,39 @@ La gestión de servicio social requiere seguimiento constante de vacantes, postu
 ---
 
 ## Tecnologías
-- **Frontend:** Vue 3, Vue Router, Pinia, Axios, Tailwind CSS, Vite.
-- **Backend:** Python, FastAPI, Uvicorn, CORSMiddleware, Alembic.
+- **Frontend:** Vue 3, Vue Router, Pinia, Axios, Tailwind CSS, Vite, @vitejs/plugin-vue, @tailwindcss/vite.
+- **Backend:** Python, FastAPI, Uvicorn, SQLAlchemy, Alembic, Pydantic, pydantic-settings, python-jose, bcrypt, python-multipart, APScheduler, prometheus-client.
 - **Base de datos:** PostgreSQL.
-- **Infraestructura:** Docker y Docker Compose.
-- **Monitoreo / observabilidad:** Prometheus.
-- **Otros componentes del repositorio:** HTML, JavaScript, Mako, Dockerfile, Nginx. :contentReference[oaicite:1]{index=1}
+- **Infraestructura:** Docker, Docker Compose, Nginx.
+- **Observabilidad:** Prometheus.
+- **Herramientas de desarrollo y despliegue:** Dockerfile, variables de entorno `.env`, migraciones con Alembic, y servidor ASGI con Uvicorn.
+
+---
+
+## Arquitectura general del sistema
+
+La siguiente arquitectura muestra la estructura general de la aplicación y la forma en que interactúan sus componentes principales.
+
+<img width="1902" height="1109" alt="image" src="https://github.com/user-attachments/assets/8834eb19-6f3e-4b27-aafe-a671bfad887e" />
+
+### Descripción de la arquitectura
+- **Cliente web:** el usuario accede desde su navegador.
+- **Frontend:** desarrollado con **Vue 3 + Vite** y servido mediante **Nginx**.
+- **Backend:** implementado con **FastAPI** y ejecutado con **Uvicorn** en el puerto `8000`.
+- **Base de datos:** **PostgreSQL** como sistema de persistencia.
+- **Volumen de archivos:** almacenamiento de documentos PDF, CV, cartas e historial en un volumen de carga (`uploads`).
+- **Comunicación interna:**
+  - El navegador consume la interfaz web por HTTP.
+  - El frontend realiza peticiones al backend en rutas `/api/*`.
+  - El backend se comunica con la base de datos mediante SQL.
+
+### Flujo general
+1. El usuario accede a la aplicación desde su navegador.
+2. Nginx entrega los archivos estáticos del frontend.
+3. El frontend consume la API del backend.
+4. FastAPI valida permisos, aplica reglas de negocio y procesa solicitudes.
+5. La información se guarda en PostgreSQL.
+6. Los documentos enviados por los usuarios se almacenan en el volumen de archivos.
 
 ---
 
@@ -65,6 +92,7 @@ La gestión de servicio social requiere seguimiento constante de vacantes, postu
 - **CRUD:** el repositorio documenta creación, edición y eliminación de carreras, alumnos, empresas y vacantes.
 - **Flujo de postulación:** el alumno consulta vacantes, entra al detalle y envía su postulación con PDF.
 - **Asignación y seguimiento:** el sistema maneja estados como pendiente, aceptada y rechazada, además de un código de confirmación para postulaciones aceptadas.
+- **Programación en segundo plano:** se utiliza un scheduler para automatizar tareas periódicas relacionadas con el estado de las postulaciones.
 
 **Diseño en el código actual:**
 - El repositorio está organizado en módulos separados: `frontend`, `backend`, `database` y `observability`.
@@ -73,7 +101,7 @@ La gestión de servicio social requiere seguimiento constante de vacantes, postu
 - El backend está estructurado con carpetas como `models`, `routers`, `schemas`, `services`, además de `config.py`, `database.py`, `main.py` y `middleware.py`.
 - El frontend usa Vite como herramienta de desarrollo y construcción, junto con Vue, Vue Router, Pinia y Axios.
 - El repositorio incluye un archivo de observabilidad con `prometheus.yaml`.
-- El proyecto también incluye un plan de pruebas manual que cubre login, paneles, CRUDs, vacantes, postulaciones y casos de control de acceso por rol. :contentReference[oaicite:2]{index=2}
+- El proyecto incluye un plan de pruebas manual que cubre login, paneles, CRUDs, vacantes, postulaciones y casos de control de acceso por rol.
 
 ---
 
